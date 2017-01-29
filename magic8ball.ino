@@ -1,5 +1,23 @@
 #include <LiquidCrystal.h>
 
+#define LCD_04  12
+#define LCD_06  11
+
+#define LCD_11  5
+#define LCD_12  4
+#define LCD_13  3
+#define LCD_14  2
+
+#define ANALOG_00 A0
+#define ANALOG_01 A1
+#define ANALOG_02 A2
+#define ANALOG_03 A3
+#define ANALOG_04 A4
+#define ANALOG_05 A5
+
+#define KEEP_ALIVE_PIN 8
+#define KEEP_ALIVE_MILLIS 15000
+
 #define LCD_COLS 8
 #define LCD_ROWS 2
 
@@ -28,12 +46,23 @@ const char* ANSWERS[] = {
   "Very doubtful"
 };
 
-LiquidCrystal lcd(12, 11, 5, 4, 3, 2);
+#define LONG_WAIT_MILLIS 1100
+#define SHORT_WAIT_MILLIS 650
+
+LiquidCrystal lcd(LCD_04, LCD_06, LCD_11, LCD_12, LCD_13, LCD_14);
 
 void setup()
 {
+  initialize_keep_alive();
   initialize_random();
   initialize_lcd();
+}
+
+// keep alive pin is 
+void initialize_keep_alive()
+{
+  pinMode(KEEP_ALIVE_PIN, OUTPUT);
+  digitalWrite(KEEP_ALIVE_PIN, HIGH);
 }
 
 // Seems to need multiple floating
@@ -41,11 +70,11 @@ void setup()
 // number to see random.
 void initialize_random()
 {
-  int a0 = analogRead(A0);
-  int a1 = analogRead(A1);
-  int a2 = analogRead(A2);
-  int a3 = analogRead(A3);
-  int a4 = analogRead(A4);
+  int a0 = analogRead(ANALOG_00);
+  int a1 = analogRead(ANALOG_01);
+  int a2 = analogRead(ANALOG_02);
+  int a3 = analogRead(ANALOG_03);
+  int a4 = analogRead(ANALOG_04);
   int seed = (a0 * a1) + (a1 * a2) + (a2 * a3) + (a3 * a4);
   randomSeed(seed);
 }
@@ -58,6 +87,10 @@ void initialize_lcd()
 void loop()
 {
   display_answer(generate_answer());
+
+  if (keep_alive_timeout()) {
+    end_keep_alive();
+  }
 }
 
 char* generate_answer()
@@ -75,13 +108,14 @@ void display_answer(char* answer)
 {
   display_rows(answer);
   if (strlen(answer) > LCD_ROWS * LCD_COLS) {
-    delay(500);
+    delay(SHORT_WAIT_MILLIS);
     for (int i = 0; strlen(&answer[i]) >= LCD_ROWS * LCD_COLS; i++) {
       display_rows(&answer[i]);
-      delay(500);
+      delay(SHORT_WAIT_MILLIS);
     }
-    delay(500);
+    delay(SHORT_WAIT_MILLIS);
   }
+  delay(LONG_WAIT_MILLIS);
 }
 
 void display_rows(char *value)
@@ -106,5 +140,15 @@ void display_row(int row, char *value)
 {
   lcd.setCursor(0, row);
   lcd.print(value);  
+}
+
+bool keep_alive_timeout()
+{
+  return millis() > KEEP_ALIVE_MILLIS;
+}
+
+void end_keep_alive()
+{
+  digitalWrite(KEEP_ALIVE_PIN, LOW);
 }
 
